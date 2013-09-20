@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+
+require 'open-uri'
+require 'json'
+
+class Downloader
+
+  DOCUMENT_URL = 'https://developer.apple.com/library/ios/navigation/library.json'
+  DOWNLOAD_URL = 'https://developer.apple.com/library/ios/samplecode/%s/%s.zip'
+
+  attr_accessor :target_path
+
+  def initialize(target_path)
+    self.target_path = target_path
+  end
+
+  def get_document_identifier
+    res = open(DOCUMENT_URL)
+    data = JSON.parse(res.read)
+    data['documents'].select do |doc|
+      doc[2] == 5
+    end.map { |x| x[9].scan(/samplecode\/(.+?)\//).flatten.join }
+  end
+
+  def download
+    get_document_identifier.each do |identifier|
+      file_path = File.join(target_path, "#{identifier}.zip")
+      url = DOWNLOAD_URL % [identifier, identifier]
+      `wget -P #{target_path} #{url}`
+      `unzip #{file_path} -d #{target_path} && rm #{file_path}`
+    end
+  end
+
+end
+
+target = File.join(File.expand_path('..', File.dirname(__FILE__)), 'sample_code')
+downloader = Downloader.new(target)
+
+downloader.download
